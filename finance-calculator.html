@@ -2,171 +2,29 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Finance Calculator Debug</title>
-    <script src="https://cdn.zohopublic.com/crm/crm-widget-sdk/v1/zoho-crm-widget-sdk.min.js"></script>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            padding: 20px; 
-            background: #f0f0f0;
-        }
-        .debug-info {
-            background: white;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-        .error { color: red; }
-        .success { color: green; }
-        .info { color: blue; }
-        .warning { color: orange; }
-    </style>
+    <title>Finance Calculator</title>
 </head>
 <body>
-    <h2>Finance Calculator - Debug Mode</h2>
+    <h2>Finance Calculator Loaded!</h2>
+    <p>Time: <span id="time"></span></p>
+    <p>Deal ID: <span id="dealId">Loading...</span></p>
     
-    <div class="debug-info">
-        <h3>Widget Status:</h3>
-        <div id="status">Initializing...</div>
-    </div>
-    
-    <div class="debug-info">
-        <h3>Console Output:</h3>
-        <div id="console-output" style="background: #333; color: #0f0; padding: 10px; font-family: monospace; height: 200px; overflow-y: auto;"></div>
-    </div>
-    
-    <div class="debug-info">
-        <h3>Test Buttons:</h3>
-        <button onclick="testSDK()">Test ZohoCRM SDK</button>
-        <button onclick="testAPI()">Test API Call</button>
-        <button onclick="showCalculator()">Show Calculator</button>
-    </div>
-    
-    <div id="calculator" style="display: none; background: white; padding: 20px; margin-top: 20px; border-radius: 5px;">
-        <h3>Finance Calculator</h3>
-        <p>Calculator loaded successfully!</p>
-        <div id="deal-info"></div>
-    </div>
-
     <script>
-        // Custom console logger
-        function log(message, type = 'info') {
-            const consoleOutput = document.getElementById('console-output');
-            const timestamp = new Date().toLocaleTimeString();
-            const colorClass = type === 'error' ? 'error' : 
-                              type === 'success' ? 'success' : 
-                              type === 'warning' ? 'warning' : 'info';
-            
-            consoleOutput.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
-            console.log(`[${type}] ${message}`);
-        }
+        // Display current time
+        document.getElementById('time').textContent = new Date().toLocaleTimeString();
         
-        // Update status
-        function updateStatus(message, type = 'info') {
-            const status = document.getElementById('status');
-            status.innerHTML = `<span class="${type}">${message}</span>`;
-        }
-        
-        // Test if ZohoCRM SDK is loaded
-        function testSDK() {
-            log('Testing ZohoCRM SDK...', 'info');
-            
-            if (typeof ZohoCRM === 'undefined') {
-                log('ERROR: ZohoCRM SDK is NOT loaded', 'error');
-                updateStatus('ZohoCRM SDK not loaded', 'error');
-                return false;
-            }
-            
-            log('ZohoCRM SDK is loaded', 'success');
-            log('SDK Version: ' + (ZohoCRM.version || 'Unknown'), 'info');
-            updateStatus('ZohoCRM SDK loaded', 'success');
-            return true;
-        }
-        
-        // Test API call
-        function testAPI() {
-            if (!testSDK()) return;
-            
-            log('Testing API call to get current record...', 'info');
-            
-            try {
-                ZohoCRM.page.getViewedRecord(function(data) {
-                    log('API Response: ' + JSON.stringify(data, null, 2), 'info');
-                    
-                    if (data.code === 3000) {
-                        log('SUCCESS: Got record data', 'success');
-                        document.getElementById('deal-info').innerHTML = `
-                            <p><strong>Record ID:</strong> ${data.data.id}</p>
-                            <p><strong>Module:</strong> ${data.data.module}</p>
-                            <p><strong>Account Name:</strong> ${data.data.Account ? data.data.Account.Account_Name : 'N/A'}</p>
-                        `;
-                    } else {
-                        log('ERROR: API returned error code ' + data.code + ': ' + data.message, 'error');
-                    }
-                });
-            } catch (error) {
-                log('EXCEPTION: ' + error.message, 'error');
-            }
-        }
-        
-        // Show calculator
-        function showCalculator() {
-            document.getElementById('calculator').style.display = 'block';
-            log('Calculator displayed', 'success');
-        }
-        
-        // Initialize widget
-        function initWidget() {
-            log('Starting widget initialization...', 'info');
-            
-            // Check if SDK is available
-            if (typeof ZohoCRM === 'undefined') {
-                log('ZohoCRM SDK not found. Waiting for it to load...', 'warning');
-                setTimeout(initWidget, 1000);
-                return;
-            }
-            
-            log('ZohoCRM SDK found', 'success');
-            
-            try {
-                ZohoCRM.widget.init({
-                    onLoad: function() {
-                        log('Widget.onLoad callback triggered', 'success');
-                        updateStatus('Widget loaded successfully', 'success');
-                        
-                        // Show calculator after successful load
-                        showCalculator();
-                    },
-                    onError: function(error) {
-                        log('Widget.onError: ' + JSON.stringify(error), 'error');
-                        updateStatus('Widget error: ' + (error.message || 'Unknown error'), 'error');
-                    }
-                });
-            } catch (error) {
-                log('Exception in widget.init: ' + error.message, 'error');
-                updateStatus('Exception: ' + error.message, 'error');
-            }
-        }
-        
-        // Wait for page load
-        window.addEventListener('load', function() {
-            log('Page loaded', 'info');
-            setTimeout(initWidget, 500); // Small delay to ensure SDK is ready
-        });
-        
-        // Also try immediate initialization
+        // Try to get Zoho CRM data
         if (typeof ZohoCRM !== 'undefined') {
-            log('ZohoCRM already available, initializing...', 'info');
-            initWidget();
+            ZohoCRM.page.getViewedRecord(function(data) {
+                if (data.code === 3000) {
+                    document.getElementById('dealId').textContent = data.data.id;
+                } else {
+                    document.getElementById('dealId').textContent = 'Error: ' + data.message;
+                }
+            });
+        } else {
+            document.getElementById('dealId').textContent = 'ZohoCRM SDK not loaded';
         }
-        
-        // Log any uncaught errors
-        window.onerror = function(message, source, lineno, colno, error) {
-            log(`Uncaught error: ${message} at line ${lineno}`, 'error');
-            return true;
-        };
     </script>
 </body>
 </html>
