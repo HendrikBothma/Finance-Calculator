@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance Calculator</title>
+    <title>Finance Calculator Widget</title>
     <script src="https://cdn.zohopublic.com/crm/crm-widget-sdk/v1/zoho-crm-widget-sdk.min.js"></script>
     <style>
         * {
@@ -17,6 +17,7 @@
             padding: 20px;
             background: #f5f5f5;
             color: #333;
+            font-size: 14px;
         }
         
         .container {
@@ -52,6 +53,7 @@
             cursor: pointer;
             font-size: 14px;
             transition: all 0.3s;
+            font-weight: 500;
         }
         
         .btn-primary {
@@ -90,6 +92,15 @@
             background: #c0392b;
         }
         
+        .btn-info {
+            background: #1abc9c;
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background: #16a085;
+        }
+        
         .tabs {
             display: flex;
             gap: 5px;
@@ -107,6 +118,8 @@
             cursor: pointer;
             white-space: nowrap;
             position: relative;
+            min-width: 120px;
+            text-align: center;
         }
         
         .tab.active {
@@ -123,6 +136,7 @@
             cursor: pointer;
             color: #666;
             font-weight: bold;
+            font-size: 16px;
         }
         
         .tab.active .close-tab {
@@ -152,6 +166,7 @@
             margin-bottom: 5px;
             font-weight: 500;
             color: #2c3e50;
+            font-size: 13px;
         }
         
         .form-group input,
@@ -169,6 +184,11 @@
             box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
         }
         
+        .form-group input[readonly] {
+            background: #f8f9fa;
+            cursor: not-allowed;
+        }
+        
         .results-section {
             background: #ecf0f1;
             padding: 15px;
@@ -179,25 +199,28 @@
         .results-section h3 {
             margin-bottom: 15px;
             color: #2c3e50;
+            font-size: 16px;
         }
         
         .results-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
         }
         
         .result-item {
             background: white;
-            padding: 10px;
+            padding: 12px;
             border-radius: 4px;
             text-align: center;
+            border: 1px solid #ddd;
         }
         
         .result-item .label {
             font-size: 12px;
             color: #7f8c8d;
             margin-bottom: 5px;
+            font-weight: 500;
         }
         
         .result-item .value {
@@ -217,12 +240,14 @@
         .history-section h3 {
             margin-bottom: 15px;
             color: #2c3e50;
+            font-size: 16px;
         }
         
         .history-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
+            font-size: 13px;
         }
         
         .history-table th,
@@ -235,6 +260,7 @@
         .history-table th {
             background: #f8f9fa;
             font-weight: 600;
+            font-size: 12px;
         }
         
         .status-indicator {
@@ -263,6 +289,7 @@
             border-radius: 4px;
             display: none;
             z-index: 1000;
+            font-size: 14px;
         }
         
         .loading {
@@ -296,6 +323,7 @@
             border-radius: 4px;
             display: none;
             z-index: 1000;
+            font-size: 14px;
         }
         
         .toast.success {
@@ -304,6 +332,36 @@
         
         .toast.error {
             background: #e74c3c;
+        }
+        
+        .toast.warning {
+            background: #f39c12;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 20px 0 10px 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+        
+        .quote-summary {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 4px solid #3498db;
+        }
+        
+        .quote-summary p {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+        
+        .quote-summary strong {
+            color: #2c3e50;
         }
     </style>
 </head>
@@ -319,9 +377,9 @@
             <h2>Finance Calculator</h2>
             <div class="button-group">
                 <button class="btn-primary" onclick="cloneQuote()">+ Clone Quote</button>
-                <button class="btn-success" onclick="saveQuote()">Save</button>
+                <button class="btn-success" onclick="saveQuote()">Save All</button>
                 <button class="btn-warning" onclick="setPreferred()">Set Preferred</button>
-                <button class="btn-primary" onclick="generatePDF()">Generate Quote</button>
+                <button class="btn-info" onclick="generatePDF()">Generate Quote</button>
                 <button class="btn-danger" onclick="closeWidget()">Close</button>
             </div>
         </div>
@@ -337,6 +395,7 @@
             </div>
             
             <div class="calculator-form">
+                <div class="section-title">Client Information</div>
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Account Name</label>
@@ -347,7 +406,10 @@
                         <label>Asset</label>
                         <input type="text" id="asset">
                     </div>
-                    
+                </div>
+                
+                <div class="section-title">Loan Details</div>
+                <div class="form-grid">
                     <div class="form-group">
                         <label>Lender</label>
                         <select id="lender">
@@ -368,16 +430,31 @@
                     </div>
                     
                     <div class="form-group">
+                        <label>Advance / Arrears</label>
+                        <select id="advanceArrears">
+                            <option value="Advance">Advance</option>
+                            <option value="Arrears">Arrears</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
                         <label>Purchase Price ($)</label>
                         <input type="number" id="purchasePrice" step="0.01" onchange="calculateQuote()">
                     </div>
                     
                     <div class="form-group">
-                        <label>Advance/Arrears</label>
-                        <select id="advanceArrears">
-                            <option value="Advance">Advance</option>
-                            <option value="Arrears">Arrears</option>
-                        </select>
+                        <label>Establishment Fee ($)</label>
+                        <input type="number" id="establishmentFee" step="0.01" value="0" onchange="calculateQuote()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Inspection Fee ($)</label>
+                        <input type="number" id="inspectionFee" step="0.01" value="0" onchange="calculateQuote()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Amount Financed ($)</label>
+                        <input type="number" id="amountFinanced" readonly>
                     </div>
                     
                     <div class="form-group">
@@ -404,21 +481,6 @@
                     </div>
                     
                     <div class="form-group">
-                        <label>Establishment Fee ($)</label>
-                        <input type="number" id="establishmentFee" step="0.01" value="0" onchange="calculateQuote()">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Inspection Fee ($)</label>
-                        <input type="number" id="inspectionFee" step="0.01" value="0" onchange="calculateQuote()">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Amount Financed ($)</label>
-                        <input type="number" id="amountFinanced" readonly>
-                    </div>
-                    
-                    <div class="form-group">
                         <label>Lender Rate (%)</label>
                         <input type="number" id="lenderRate" step="0.01" onchange="calculateQuote()">
                     </div>
@@ -440,549 +502,3 @@
                 </div>
                 
                 <div class="results-section">
-                    <h3>Quote Results</h3>
-                    <div class="results-grid">
-                        <div class="result-item">
-                            <div class="label">Monthly Repayment</div>
-                            <div class="value" id="monthlyRepayment">$0.00</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="label">Total Repayment</div>
-                            <div class="value" id="totalRepayment">$0.00</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="label">Total Interest</div>
-                            <div class="value" id="totalInterest">$0.00</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="label">GST Back</div>
-                            <div class="value" id="gstBack">No</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="history-section">
-                <h3>Previous Quotes for This Client</h3>
-                <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Lender</th>
-                            <th>Asset</th>
-                            <th>Amount Financed</th>
-                            <th>Term</th>
-                            <th>Balloon</th>
-                            <th>GST Back</th>
-                            <th>Lender Rate</th>
-                            <th>Customer Rate</th>
-                            <th>Margin</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyTableBody">
-                        <!-- History will be populated here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        // Global variables
-        let dealId = null;
-        let clientId = null;
-        let quotes = [];
-        let activeQuoteIndex = 0;
-        let autoSaveInterval = null;
-        
-        // Initialize widget
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeWidget();
-        });
-        
-        function initializeWidget() {
-            // Show loading
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('calculator').style.display = 'none';
-            
-            // Get deal ID from URL parameters (Zoho CRM passes this)
-            const urlParams = new URLSearchParams(window.location.search);
-            dealId = urlParams.get('dealId') || urlParams.get('id');
-            
-            if (!dealId) {
-                showToast('Deal ID not found', 'error');
-                return;
-            }
-            
-            // Initialize Zoho CRM SDK
-            ZOHOCRM.init().then(function() {
-                // Get deal data
-                getDealData();
-            }).catch(function(error) {
-                console.error('Zoho CRM SDK initialization failed:', error);
-                showToast('Failed to connect to CRM', 'error');
-            });
-        }
-        
-        function getDealData() {
-            ZOHOCRM.API.getRecord('Deals', dealId)
-                .then(function(response) {
-                    if (response.data) {
-                        const deal = response.data;
-                        clientId = deal.Account && deal.Account.id ? deal.Account.id : null;
-                        
-                        // Populate account name
-                        document.getElementById('accountName').value = deal.Account ? deal.Account.name : '';
-                        document.getElementById('asset').value = deal.Asset || '';
-                        
-                        // Check for existing quotes
-                        checkExistingQuotes(deal);
-                        
-                        // Load client history
-                        loadClientHistory();
-                        
-                        // Hide loading, show calculator
-                        document.getElementById('loading').style.display = 'none';
-                        document.getElementById('calculator').style.display = 'block';
-                        
-                        // Start auto-save
-                        startAutoSave();
-                    }
-                })
-                .catch(function(error) {
-                    console.error('Error getting deal data:', error);
-                    showToast('Failed to load deal data', 'error');
-                });
-        }
-        
-        function checkExistingQuotes(deal) {
-            // Check if there are existing quotes in the subform
-            if (deal.Finance_Quotes && deal.Finance_Quotes.length > 0) {
-                // Load existing quotes
-                deal.Finance_Quotes.forEach(function(quote, index) {
-                    const quoteData = JSON.parse(quote.Quote_JSON || '{}');
-                    quotes.push({
-                        ...quoteData,
-                        id: quote.id,
-                        preferred: quote.Preferred1 || false
-                    });
-                });
-                
-                // Create tabs for existing quotes
-                createTabs();
-                
-                // Load first quote
-                if (quotes.length > 0) {
-                    loadQuote(0);
-                }
-            } else {
-                // Create new quote with pre-populated data
-                const newQuote = {
-                    accountName: document.getElementById('accountName').value,
-                    asset: document.getElementById('asset').value,
-                    purchasePrice: 0,
-                    term: 60,
-                    balloon: 0,
-                    gstAmount: 0,
-                    establishmentFee: 0,
-                    inspectionFee: 0,
-                    lenderRate: 0,
-                    brokerage: 0
-                };
-                
-                quotes.push(newQuote);
-                createTabs();
-                loadQuote(0);
-            }
-        }
-        
-        function createTabs() {
-            const tabsContainer = document.getElementById('tabsContainer');
-            tabsContainer.innerHTML = '';
-            
-            quotes.forEach(function(quote, index) {
-                const tab = document.createElement('div');
-                tab.className = 'tab' + (index === activeQuoteIndex ? ' active' : '');
-                tab.innerHTML = `
-                    Quote ${index + 1}
-                    ${quote.preferred ? '<span class="status-indicator status-preferred"></span>' : ''}
-                    ${index > 0 ? '<span class="close-tab" onclick="closeTab(' + index + ')">×</span>' : ''}
-                `;
-                tab.onclick = function() {
-                    loadQuote(index);
-                };
-                tabsContainer.appendChild(tab);
-            });
-        }
-        
-        function loadQuote(index) {
-            activeQuoteIndex = index;
-            const quote = quotes[index];
-            
-            // Populate form fields
-            document.getElementById('asset').value = quote.asset || '';
-            document.getElementById('lender').value = quote.lender || '';
-            document.getElementById('purchasePrice').value = quote.purchasePrice || 0;
-            document.getElementById('advanceArrears').value = quote.advanceArrears || 'Advance';
-            document.getElementById('term').value = quote.term || 60;
-            document.getElementById('balloon').value = quote.balloon || 0;
-            document.getElementById('gstAmount').value = quote.gstAmount || 0;
-            document.getElementById('gstMonth').value = quote.gstMonth || 'Monthly';
-            document.getElementById('establishmentFee').value = quote.establishmentFee || 0;
-            document.getElementById('inspectionFee').value = quote.inspectionFee || 0;
-            document.getElementById('lenderRate').value = quote.lenderRate || 0;
-            document.getElementById('brokerage').value = quote.brokerage || 0;
-            
-            // Calculate and display results
-            calculateQuote();
-            
-            // Update tabs
-            createTabs();
-        }
-        
-        function calculateQuote() {
-            // Get form values
-            const purchasePrice = parseFloat(document.getElementById('purchasePrice').value) || 0;
-            const term = parseInt(document.getElementById('term').value) || 60;
-            const balloon = parseFloat(document.getElementById('balloon').value) || 0;
-            const gstAmount = parseFloat(document.getElementById('gstAmount').value) || 0;
-            const establishmentFee = parseFloat(document.getElementById('establishmentFee').value) || 0;
-            const inspectionFee = parseFloat(document.getElementById('inspectionFee').value) || 0;
-            const lenderRate = parseFloat(document.getElementById('lenderRate').value) || 0;
-            const brokerage = parseFloat(document.getElementById('brokerage').value) || 0;
-            
-            // Calculate Amount Financed
-            const amountFinanced = purchasePrice + establishmentFee + inspectionFee;
-            document.getElementById('amountFinanced').value = amountFinanced;
-            
-            // Calculate Margin
-            const margin = purchasePrice > 0 ? (brokerage / purchasePrice) * 100 : 0;
-            document.getElementById('margin').value = margin.toFixed(2);
-            
-            // Calculate Customer Rate (simplified formula - you'll need to replace with your actual formula)
-            const customerRate = lenderRate + margin;
-            document.getElementById('customerRate').value = customerRate.toFixed(2);
-            
-            // Calculate Monthly Repayment (simplified calculation)
-            const monthlyRate = lenderRate / 100 / 12;
-            const principal = amountFinanced - balloon;
-            
-            let monthlyRepayment = 0;
-            if (monthlyRate > 0) {
-                monthlyRepayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, term)) / 
-                                  (Math.pow(1 + monthlyRate, term) - 1);
-            } else {
-                monthlyRepayment = principal / term;
-            }
-            
-            // Add GST if monthly
-            if (document.getElementById('gstMonth').value === 'Monthly') {
-                monthlyRepayment += gstAmount / term;
-            }
-            
-            const totalRepayment = monthlyRepayment * term + balloon;
-            const totalInterest = totalRepayment - amountFinanced;
-            
-            // Determine GST Back
-            const gstBack = gstAmount > 0 ? 'Yes' : 'No';
-            document.getElementById('gstBack').textContent = gstBack;
-            
-            // Display results
-            document.getElementById('monthlyRepayment').textContent = formatCurrency(monthlyRepayment);
-            document.getElementById('totalRepayment').textContent = formatCurrency(totalRepayment);
-            document.getElementById('totalInterest').textContent = formatCurrency(totalInterest);
-            
-            // Save current quote data
-            saveCurrentQuoteData();
-        }
-        
-        function saveCurrentQuoteData() {
-            const currentQuote = quotes[activeQuoteIndex];
-            
-            currentQuote.asset = document.getElementById('asset').value;
-            currentQuote.lender = document.getElementById('lender').value;
-            currentQuote.purchasePrice = parseFloat(document.getElementById('purchasePrice').value) || 0;
-            currentQuote.advanceArrears = document.getElementById('advanceArrears').value;
-            currentQuote.term = parseInt(document.getElementById('term').value) || 60;
-            currentQuote.balloon = parseFloat(document.getElementById('balloon').value) || 0;
-            currentQuote.gstAmount = parseFloat(document.getElementById('gstAmount').value) || 0;
-            currentQuote.gstMonth = document.getElementById('gstMonth').value;
-            currentQuote.establishmentFee = parseFloat(document.getElementById('establishmentFee').value) || 0;
-            currentQuote.inspectionFee = parseFloat(document.getElementById('inspectionFee').value) || 0;
-            currentQuote.amountFinanced = parseFloat(document.getElementById('amountFinanced').value) || 0;
-            currentQuote.lenderRate = parseFloat(document.getElementById('lenderRate').value) || 0;
-            currentQuote.brokerage = parseFloat(document.getElementById('brokerage').value) || 0;
-            currentQuote.margin = parseFloat(document.getElementById('margin').value) || 0;
-            currentQuote.customerRate = parseFloat(document.getElementById('customerRate').value) || 0;
-            currentQuote.monthlyRepayment = parseFloat(document.getElementById('monthlyRepayment').textContent.replace(/[^0-9.-]+/g, '')) || 0;
-            currentQuote.totalRepayment = parseFloat(document.getElementById('totalRepayment').textContent.replace(/[^0-9.-]+/g, '')) || 0;
-            currentQuote.totalInterest = parseFloat(document.getElementById('totalInterest').textContent.replace(/[^0-9.-]+/g, '')) || 0;
-            currentQuote.gstBack = document.getElementById('gstBack').textContent;
-            currentQuote.lastSaved = new Date().toISOString();
-        }
-        
-        function cloneQuote() {
-            // Save current quote first
-            saveCurrentQuoteData();
-            
-            // Clone the current quote
-            const currentQuote = quotes[activeQuoteIndex];
-            const clonedQuote = JSON.parse(JSON.stringify(currentQuote));
-            clonedQuote.preferred = false;
-            clonedQuote.id = null; // New quote
-            
-            quotes.push(clonedQuote);
-            activeQuoteIndex = quotes.length - 1;
-            
-            createTabs();
-            loadQuote(activeQuoteIndex);
-            
-            showToast('Quote cloned successfully', 'success');
-        }
-        
-        function closeTab(index) {
-            if (quotes.length <= 1) {
-                showToast('Cannot close the last quote', 'error');
-                return;
-            }
-            
-            quotes.splice(index, 1);
-            
-            if (activeQuoteIndex >= quotes.length) {
-                activeQuoteIndex = quotes.length - 1;
-            }
-            
-            createTabs();
-            loadQuote(activeQuoteIndex);
-        }
-        
-        function saveQuote() {
-            saveCurrentQuoteData();
-            
-            // Prepare data for Zoho CRM
-            const quoteRecords = quotes.map(function(quote, index) {
-                return {
-                    'Advanced_Arrears': quote.advanceArrears,
-                    'Amount_Financed': quote.amountFinanced,
-                    'Asset': quote.asset,
-                    'Balloon': quote.balloon,
-                    'Brokerage': quote.brokerage,
-                    'Customer_Rate': quote.customerRate,
-                    'Establishment_Fee': quote.establishmentFee,
-                    'GST_Amount': quote.gstAmount,
-                    'GST_Back': quote.gstBack === 'Yes',
-                    'GST_Month': quote.gstMonth,
-                    'Inspection_Fee': quote.inspectionFee,
-                    'Lender': quote.lender,
-                    'Lender_Rate': quote.lenderRate,
-                    'Margin': quote.margin,
-                    'Monthly_Repayment': quote.monthlyRepayment,
-                    'Preferred1': quote.preferred || false,
-                    'Purchase_Price': quote.purchasePrice,
-                    'Quote_Number': 'Q' + (index + 1),
-                    'Term': quote.term,
-                    'Total_Interest': quote.totalInterest,
-                    'Total_Repayment': quote.totalRepayment,
-                    'Last_Saved': quote.lastSaved,
-                    'Quote_JSON': JSON.stringify(quote)
-                };
-            });
-            
-            // Update deal with quotes
-            ZOHOCRM.API.updateRecord('Deals', dealId, {
-                'Finance_Quotes': quoteRecords
-            })
-            .then(function(response) {
-                showToast('Quote saved successfully', 'success');
-                
-                // Update quote IDs
-                if (response.data && response.data.details) {
-                    const updatedQuotes = response.data.details.Finance_Quotes || [];
-                    updatedQuotes.forEach(function(updatedQuote, index) {
-                        if (quotes[index]) {
-                            quotes[index].id = updatedQuote.id;
-                        }
-                    });
-                }
-            })
-            .catch(function(error) {
-                console.error('Error saving quote:', error);
-                showToast('Failed to save quote', 'error');
-            });
-        }
-        
-        function setPreferred() {
-            // Remove preferred status from all quotes
-            quotes.forEach(function(quote) {
-                quote.preferred = false;
-            });
-            
-            // Set current quote as preferred
-            quotes[activeQuoteIndex].preferred = true;
-            
-            createTabs();
-            showToast('Quote set as preferred', 'success');
-            
-            // Auto-save when setting preferred
-            saveQuote();
-        }
-        
-        function generatePDF() {
-            saveCurrentQuoteData();
-            
-            // Prepare merge data for Zoho Writer
-            const mergeData = {
-                'Account_Name': document.getElementById('accountName').value,
-                'Quotes': quotes.map(function(quote, index) {
-                    return {
-                        'Quote_Number': 'Q' + (index + 1),
-                        'Lender': quote.lender,
-                        'Asset': quote.asset,
-                        'Amount_Financed': formatCurrency(quote.amountFinanced),
-                        'Term': quote.term,
-                        'Balloon': formatCurrency(quote.balloon),
-                        'GST_Back': quote.gstBack,
-                        'Lender_Rate': quote.lenderRate + '%',
-                        'Customer_Rate': quote.customerRate + '%',
-                        'Margin': quote.margin + '%',
-                        'Monthly_Repayment': formatCurrency(quote.monthlyRepayment),
-                        'Total_Repayment': formatCurrency(quote.totalRepayment),
-                        'Total_Interest': formatCurrency(quote.totalInterest),
-                        'Preferred': quote.preferred ? 'Yes' : 'No'
-                    };
-                })
-            };
-            
-            // Call Zoho Writer merge function (you'll need to implement this)
-            // This is a placeholder - you'll need to adapt based on your Zoho Writer setup
-            ZOHOCRM.API.functions.execute('generate_quote_pdf', {
-                dealId: dealId,
-                mergeData: mergeData
-            })
-            .then(function(response) {
-                showToast('PDF generated successfully', 'success');
-            })
-            .catch(function(error) {
-                console.error('Error generating PDF:', error);
-                showToast('Failed to generate PDF', 'error');
-            });
-        }
-        
-        function loadClientHistory() {
-            if (!clientId) {
-                document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="10">No client history found</td></tr>';
-                return;
-            }
-            
-            // Search for previous deals for this client
-            ZOHOCRM.API.searchRecords('Deals', {
-                criteria: '(Account:idequals:' + clientId + ')',
-                per_page: 5,
-                sort_order: 'desc',
-                sort_by: 'Created_Time'
-            })
-            .then(function(response) {
-                const historyTableBody = document.getElementById('historyTableBody');
-                historyTableBody.innerHTML = '';
-                
-                if (response.data && response.data.length > 0) {
-                    response.data.forEach(function(deal) {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${formatDate(deal.Created_Time)}</td>
-                            <td>${deal.Lender || '-'}</td>
-                            <td>${deal.Asset || '-'}</td>
-                            <td>${formatCurrency(deal.Amount_Financed || 0)}</td>
-                            <td>${deal.Term || '-'}</td>
-                            <td>${formatCurrency(deal.Balloon || 0)}</td>
-                            <td>${deal.GST_Back ? 'Yes' : 'No'}</td>
-                            <td>${deal.Lender_Rate ? deal.Lender_Rate + '%' : '-'}</td>
-                            <td>${deal.Customer_Rate ? deal.Customer_Rate + '%' : '-'}</td>
-                            <td>${deal.Margin ? deal.Margin + '%' : '-'}</td>
-                        `;
-                        historyTableBody.appendChild(row);
-                    });
-                } else {
-                    historyTableBody.innerHTML = '<tr><td colspan="10">No previous deals found</td></tr>';
-                }
-            })
-            .catch(function(error) {
-                console.error('Error loading client history:', error);
-                document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="10">Error loading history</td></tr>';
-            });
-        }
-        
-        function startAutoSave() {
-            // Auto-save every 30 seconds
-            autoSaveInterval = setInterval(function() {
-                saveCurrentQuoteData();
-                showAutoSaveIndicator();
-                
-                // Save to CRM
-                const quoteRecords = quotes.map(function(quote, index) {
-                    return {
-                        'Last_Saved': new Date().toISOString(),
-                        'Quote_JSON': JSON.stringify(quote)
-                    };
-                });
-                
-                ZOHOCRM.API.updateRecord('Deals', dealId, {
-                    'Finance_Quotes': quoteRecords
-                })
-                .catch(function(error) {
-                    console.error('Auto-save failed:', error);
-                });
-            }, 30000); // 30 seconds
-        }
-        
-        function showAutoSaveIndicator() {
-            const indicator = document.getElementById('autoSaveIndicator');
-            indicator.style.display = 'block';
-            setTimeout(function() {
-                indicator.style.display = 'none';
-            }, 2000);
-        }
-        
-        function closeWidget() {
-            // Final save before closing
-            saveCurrentQuoteData();
-            saveQuote();
-            
-            // Close the widget
-            ZOHOCRM.close();
-        }
-        
-        function formatCurrency(amount) {
-            return '$' + amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-        }
-        
-        function formatDate(dateString) {
-            if (!dateString) return '-';
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-AU', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-        }
-        
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast ' + type;
-            toast.style.display = 'block';
-            
-            setTimeout(function() {
-                toast.style.display = 'none';
-            }, 3000);
-        }
-        
-        // Clean up on page unload
-        window.addEventListener('beforeunload', function() {
-            if (autoSaveInterval) {
-                clearInterval(autoSaveInterval);
-            }
-        });
-    </script>
-</body>
-</html>
