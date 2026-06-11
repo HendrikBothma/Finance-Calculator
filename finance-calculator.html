@@ -552,83 +552,131 @@
         let dealId = '';
         let accountId = '';
         let autoSaveTimer = null;
+        let widgetInitialized = false;
         
-        // Initialize the widget
-        ZohoCRM.widget.init({
-            onLoad: function() {
-                console.log('Widget loaded');
-                loadDealData();
+        // Initialize the widget - FIXED VERSION
+        function initializeWidget() {
+            console.log('Initializing widget...');
+            
+            // Check if ZohoCRM is available
+            if (typeof ZohoCRM === 'undefined') {
+                console.error('ZohoCRM SDK not loaded');
+                showToast('Zoho CRM SDK not loaded. Please check your internet connection.', 'error');
+                return;
             }
-        });
+            
+            try {
+                ZohoCRM.widget.init({
+                    onLoad: function() {
+                        console.log('Widget initialized successfully');
+                        widgetInitialized = true;
+                        loadDealData();
+                    },
+                    onError: function(error) {
+                        console.error('Widget initialization error:', error);
+                        showToast('Widget initialization failed: ' + error, 'error');
+                    }
+                });
+            } catch (error) {
+                console.error('Error initializing widget:', error);
+                showToast('Error: ' + error.message, 'error');
+            }
+        }
         
         // Load deal data
         function loadDealData() {
-            ZohoCRM.page.getViewedRecord(function(data) {
-                if (data.code === 3000) {
-                    dealId = data.data.id;
-                    accountId = data.data.Account ? data.data.Account.id : '';
+            console.log('Loading deal data...');
+            
+            try {
+                ZohoCRM.page.getViewedRecord(function(data) {
+                    console.log('Get viewed record response:', data);
                     
-                    // Load account details
-                    if (accountId) {
-                        ZohoCRM.record.getRecordById('Accounts', accountId, function(data) {
-                            if (data.code === 3000) {
-                                document.getElementById('accountName').value = data.data.Account_Name;
-                            }
-                        });
+                    if (data.code === 3000) {
+                        dealId = data.data.id;
+                        accountId = data.data.Account ? data.data.Account.id : '';
+                        
+                        console.log('Deal ID:', dealId);
+                        console.log('Account ID:', accountId);
+                        
+                        // Load account details
+                        if (accountId) {
+                            ZohoCRM.record.getRecordById('Accounts', accountId, function(data) {
+                                console.log('Get account response:', data);
+                                if (data.code === 3000) {
+                                    document.getElementById('accountName').value = data.data.Account_Name;
+                                }
+                            });
+                        }
+                        
+                        // Load existing quotes
+                        loadExistingQuotes();
+                        
+                        // Show calculator
+                        document.getElementById('loading').style.display = 'none';
+                        document.getElementById('calculator').style.display = 'block';
+                        
+                        // Create first tab
+                        createNewTab();
+                        
+                        // Start auto-save
+                        startAutoSave();
+                    } else {
+                        console.error('Error loading deal data:', data);
+                        showToast('Error loading deal data: ' + (data.message || 'Unknown error'), 'error');
                     }
-                    
-                    // Load existing quotes
-                    loadExistingQuotes();
-                    
-                    // Show calculator
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('calculator').style.display = 'block';
-                    
-                    // Create first tab
-                    createNewTab();
-                    
-                    // Start auto-save
-                    startAutoSave();
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Error in loadDealData:', error);
+                showToast('Error: ' + error.message, 'error');
+            }
         }
         
         // Load existing quotes from subform
         function loadExistingQuotes() {
-            ZohoCRM.subform.getSubformRecords('Deals', dealId, 'Finance_Quotes', function(data) {
-                if (data.code === 3000 && data.data.length > 0) {
-                    // Sort by creation date descending
-                    const sortedQuotes = data.data.sort((a, b) => {
-                        return new Date(b.Created_Time) - new Date(a.Created_Time);
-                    });
+            console.log('Loading existing quotes...');
+            
+            try {
+                ZohoCRM.subform.getSubformRecords('Deals', dealId, 'Finance_Quotes', function(data) {
+                    console.log('Get subform records response:', data);
                     
-                    // Take last 5
-                    const last5 = sortedQuotes.slice(0, 5);
-                    
-                    // Update history table
-                    const tbody = document.getElementById('historyTableBody');
-                    tbody.innerHTML = '';
-                    
-                    last5.forEach(quote => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${quote.Quote_Number || 'N/A'}</td>
-                            <td>${quote.Lender || 'N/A'}</td>
-                            <td>${formatCurrency(quote.Amount_Financed)}</td>
-                            <td>${quote.Customer_Rate ? quote.Customer_Rate + '%' : 'N/A'}</td>
-                            <td>${quote.Term || 'N/A'}</td>
-                            <td>
-                                <span class="status-indicator ${quote.Preferred1 ? 'status-preferred' : 'status-saved'}"></span>
-                                ${quote.Preferred1 ? 'Preferred' : 'Saved'}
-                            </td>
-                        `;
-                        tbody.appendChild(row);
-                    });
-                    
-                    // Store quotes in memory
-                    quotes = last5;
-                }
-            });
+                    if (data.code === 3000 && data.data.length > 0) {
+                        // Sort by creation date descending
+                        const sortedQuotes = data.data.sort((a, b) => {
+                            return new Date(b.Created_Time) - new Date(a.Created_Time);
+                        });
+                        
+                        // Take last 5
+                        const last5 = sortedQuotes.slice(0, 5);
+                        
+                        // Update history table
+                        const tbody = document.getElementById('historyTableBody');
+                        tbody.innerHTML = '';
+                        
+                        last5.forEach(quote => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${quote.Quote_Number || 'N/A'}</td>
+                                <td>${quote.Lender || 'N/A'}</td>
+                                <td>${formatCurrency(quote.Amount_Financed)}</td>
+                                <td>${quote.Customer_Rate ? quote.Customer_Rate + '%' : 'N/A'}</td>
+                                <td>${quote.Term || 'N/A'}</td>
+                                <td>
+                                    <span class="status-indicator ${quote.Preferred1 ? 'status-preferred' : 'status-saved'}"></span>
+                                    ${quote.Preferred1 ? 'Preferred' : 'Saved'}
+                                </td>
+                            `;
+                            tbody.appendChild(row);
+                        });
+                        
+                        // Store quotes in memory
+                        quotes = last5;
+                    } else {
+                        console.log('No existing quotes found');
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading existing quotes:', error);
+            }
         }
         
         // Create new tab
@@ -931,6 +979,18 @@
                 }, 2000);
             }
         });
+        
+        // Initialize widget when page loads
+        window.addEventListener('load', function() {
+            console.log('Page loaded, initializing widget...');
+            initializeWidget();
+        });
+        
+        // Also try to initialize immediately if SDK is already loaded
+        if (typeof ZohoCRM !== 'undefined') {
+            console.log('ZohoCRM SDK already loaded, initializing...');
+            initializeWidget();
+        }
     </script>
 </body>
 </html>
