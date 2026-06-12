@@ -1,1 +1,390 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1.0"/> <title>Finance Calculator</title> <style> * { margin: 0; padding: 0; box-sizing: border-box; } body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; } .container { background: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); width: 420px; overflow: hidden; } .header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 20px 24px; text-align: center; } .header h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.5px; } .header p { font-size: 12px; color: #a0aec0; margin-top: 4px; } .form-section { padding: 24px; } .form-group { margin-bottom: 16px; } .form-group label { display: block; font-size: 13px; font-weight: 600; color: #4a5568; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; } .input-wrapper { position: relative; display: flex; align-items: center; } .input-prefix { position: absolute; left: 12px; font-size: 14px; color: #718096; font-weight: 600; } .input-suffix { position: absolute; right: 12px; font-size: 14px; color: #718096; font-weight: 600; } .form-group input { width: 100%; padding: 10px 36px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; color: #2d3748; transition: border-color 0.2s; outline: none; background: #f7fafc; } .form-group input:focus { border-color: #667eea; background: #ffffff; } .btn-calculate { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 4px; transition: opacity 0.2s; } .btn-calculate:hover { opacity: 0.9; } .results-section { background: #f7fafc; border-top: 2px solid #e2e8f0; padding: 20px 24px; display: none; } .results-section.visible { display: block; } .results-title { font-size: 13px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; } .result-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e2e8f0; } .result-row:last-of-type { border-bottom: none; } .result-label { font-size: 13px; color: #718096; } .result-value { font-size: 14px; font-weight: 700; color: #2d3748; } .result-highlight { background: linear-gradient(135deg, #1a1a2e, #16213e); border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; } .result-highlight .label { font-size: 13px; color: #a0aec0; } .result-highlight .value { font-size: 22px; font-weight: 700; color: #ffffff; } .btn-save { width: 100%; padding: 11px; background: #38a169; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 14px; transition: background 0.2s; } .btn-save:hover { background: #2f855a; } .save-status { text-align: center; font-size: 12px; margin-top: 8px; height: 16px; } .save-status.success { color: #38a169; } .save-status.error { color: #e53e3e; } </style> </head> <body> <div class="container"> <div class="header"> <h1>💼 Finance Calculator</h1> <p>Asset Finance Quotation Tool</p> </div> <div class="form-section"> <div class="form-group"> <label>Asset Value</label> <div class="input-wrapper"> <span class="input-prefix">R</span> <input type="number" id="assetValue" placeholder="0.00" /> </div> </div> <div class="form-group"> <label>Deposit</label> <div class="input-wrapper"> <span class="input-prefix">R</span> <input type="number" id="deposit" placeholder="0.00" /> </div> </div> <div class="form-group"> <label>Balloon Payment</label> <div class="input-wrapper"> <input type="number" id="balloon" placeholder="0" /> <span class="input-suffix">%</span> </div> </div> <div class="form-group"> <label>Interest Rate</label> <div class="input-wrapper"> <input type="number" id="interestRate" placeholder="0.00" /> <span class="input-suffix">%</span> </div> </div> <div class="form-group"> <label>Term</label> <div class="input-wrapper"> <input type="number" id="term" placeholder="0" /> <span class="input-suffix">mo</span> </div> </div> <button class="btn-calculate" onclick="calculate()">Calculate</button> </div> <div class="results-section" id="resultsSection"> <div class="result-highlight"> <span class="label">Monthly Instalment</span> <span class="value" id="monthlyPayment">R0.00</span> </div> <div class="results-title">Breakdown</div> <div class="result-row"> <span class="result-label">Financed Amount</span> <span class="result-value" id="financedAmount">R0.00</span> </div> <div class="result-row"> <span class="result-label">Balloon Amount</span> <span class="result-value" id="balloonAmount">R0.00</span> </div> <div class="result-row"> <span class="result-label">Total Repayment</span> <span class="result-value" id="totalRepayment">R0.00</span> </div> <div class="result-row"> <span class="result-label">Total Interest</span> <span class="result-value" id="totalInterest">R0.00</span> </div> <button class="btn-save" onclick="saveToZoho()">💾 Save to Deal</button> <div class="save-status" id="saveStatus"></div> </div> </div> <script src="https://js.zohostatic.com/zohocrm/sdk/2.0/zohocrmsdk.js"></script> <script> function fmt(n) { return 'R' + n.toLocaleString('en-ZA', {minimumFractionDigits: 2, maximumFractionDigits: 2}); } let calcResults = {}; function calculate() { const assetValue = parseFloat(document.getElementById('assetValue').value) || 0; const deposit = parseFloat(document.getElementById('deposit').value) || 0; const balloonPct = parseFloat(document.getElementById('balloon').value) || 0; const annualRate = parseFloat(document.getElementById('interestRate').value) || 0; const term = parseInt(document.getElementById('term').value) || 0; if (assetValue <= 0 || term <= 0 || annualRate <= 0) { alert('Please enter Asset Value, Interest Rate and Term.'); return; } const balloonAmount = assetValue * (balloonPct / 100); const financedAmount = assetValue - deposit; const monthlyRate = annualRate / 100 / 12; const pv = financedAmount - (balloonAmount / Math.pow(1 + monthlyRate, term)); let monthly; if (monthlyRate === 0) { monthly = pv / term; } else { monthly = (pv * monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1); } const totalRepayment = (monthly * term) + balloonAmount; const totalInterest = totalRepayment - financedAmount; calcResults = { assetValue: assetValue, deposit: deposit, balloonPct: balloonPct, balloonAmount: balloonAmount, financedAmount: financedAmount, interestRate: annualRate, term: term, monthlyPayment: monthly, totalRepayment: totalRepayment, totalInterest: totalInterest }; document.getElementById('monthlyPayment').textContent = fmt(monthly); document.getElementById('financedAmount').textContent = fmt(financedAmount); document.getElementById('balloonAmount').textContent = fmt(balloonAmount); document.getElementById('totalRepayment').textContent = fmt(totalRepayment); document.getElementById('totalInterest').textContent = fmt(totalInterest); document.getElementById('resultsSection').classList.add('visible'); } function saveToZoho() { if (!calcResults.monthlyPayment) { alert('Please calculate first.'); return; } const status = document.getElementById('saveStatus'); status.textContent = 'Saving...'; status.className = 'save-status'; ZOHO.CRM.API.getRecord({Entity: "Deals", RecordID: "{{dealId}}"}) .then(function(){ ZOHO.CRM.ACTION.setConfig({ "function_name": "sync_finance_to_sheet", "params": calcResults }).then(function(response){ status.textContent = '✅ Saved successfully!'; status.className = 'save-status success'; }).catch(function(){ status.textContent = '❌ Save failed. Try again.'; status.className = 'save-status error'; }); }); } ZOHO.embeddedApp.on("PageLoad", function(data) { // Widget loaded }); ZOHO.embeddedApp.init(); </script> </body> </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finance Calculator</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- ── Header ── -->
+    <div class="header">
+      <div class="header-left">
+        <div class="header-icon">💰</div>
+        <div>
+          <h1>Finance Calculator</h1>
+          <p class="header-sub">Compare up to 4 finance quotes side by side</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-secondary" onclick="loadFromSheet()">🔄 Refresh</button>
+        <button class="btn btn-primary" onclick="saveToSheet()">💾 Save All Quotes</button>
+      </div>
+    </div>
+
+    <!-- ── Status Bar ── -->
+    <div id="status-bar" class="status-bar hidden">
+      <span id="status-icon"></span>
+      <span id="status-msg"></span>
+    </div>
+
+    <!-- ── Client Information ── -->
+    <div class="section-card">
+      <div class="section-title">📋 Client Information</div>
+      <div class="client-grid">
+        <div class="field-group">
+          <label>Client Name</label>
+          <input type="text" id="client_name" placeholder="e.g. John Smith" />
+        </div>
+        <div class="field-group">
+          <label>Asset</label>
+          <input type="text" id="asset" placeholder="e.g. 2023 Toyota Hilux" />
+        </div>
+        <div class="field-group">
+          <label>Quote Reference</label>
+          <input type="text" id="quote_ref" placeholder="e.g. Q-2026-001" />
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Quotes Grid ── -->
+    <div class="quotes-grid">
+
+      <!-- ── Quote 1 ── -->
+      <div class="quote-card" id="card-1">
+        <div class="quote-header q1-header">
+          <div class="quote-title-row">
+            <span class="quote-label">Quote 1</span>
+            <span class="badge-recommended">★ Recommended</span>
+            <label class="toggle-wrap">
+              <input type="checkbox" id="enable-1" checked onchange="toggleQuote(1)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="quote-body" id="body-1">
+          <div class="field-group">
+            <label>Lender</label>
+            <input type="text" id="q1_lender" placeholder="e.g. Westpac" />
+          </div>
+          <div class="field-group">
+            <label>Finance Amount ($)</label>
+            <input type="number" id="q1_amount" placeholder="0.00" />
+          </div>
+          <div class="field-group">
+            <label>Interest Rate (%)</label>
+            <input type="number" id="q1_rate" placeholder="0.00" step="0.01" />
+          </div>
+          <div class="field-group">
+            <label>Term (Months)</label>
+            <input type="number" id="q1_term" placeholder="60" />
+          </div>
+          <div class="field-group">
+            <label>Balloon (%)</label>
+            <input type="number" id="q1_balloon" placeholder="0" />
+          </div>
+          <div class="field-group">
+            <label>Payment Type</label>
+            <select id="q1_advance_arrears">
+              <option value="Arrears">Arrears</option>
+              <option value="Advance">Advance</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>GST Back</label>
+            <select id="q1_gst_back">
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Establishment Fee ($)</label>
+            <input type="number" id="q1_est_fee" placeholder="0.00" />
+          </div>
+          <div class="field-group">
+            <label>Inspection Fee ($)</label>
+            <input type="number" id="q1_insp_fee" placeholder="0.00" />
+          </div>
+          <div class="results-panel">
+            <div class="result-row">
+              <span class="result-label">Monthly Repayment</span>
+              <span class="result-value highlight" id="q1_monthly_repayment">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">GST Amount</span>
+              <span class="result-value" id="q1_gst_amount">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">Total Interest</span>
+              <span class="result-value" id="q1_total_interest">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">Total Repayment</span>
+              <span class="result-value" id="q1_total_repayment">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="quote-overlay hidden" id="overlay-1">
+          <span>Quote 1 Disabled</span>
+        </div>
+      </div>
+
+      <!-- ── Quote 2 ── -->
+      <div class="quote-card" id="card-2">
+        <div class="quote-header q2-header">
+          <div class="quote-title-row">
+            <span class="quote-label">Quote 2</span>
+            <label class="toggle-wrap">
+              <input type="checkbox" id="enable-2" checked onchange="toggleQuote(2)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="quote-body" id="body-2">
+          <div class="field-group">
+            <label>Lender</label>
+            <input type="text" id="q2_lender" placeholder="e.g. ANZ" />
+          </div>
+          <div class="field-group">
+            <label>Finance Amount ($)</label>
+            <input type="number" id="q2_amount" placeholder="0.00" />
+          </div>
+          <div class="field-group">
+            <label>Interest Rate (%)</label>
+            <input type="number" id="q2_rate" placeholder="0.00" step="0.01" />
+          </div>
+          <div class="field-group">
+            <label>Term (Months)</label>
+            <input type="number" id="q2_term" placeholder="60" />
+          </div>
+          <div class="field-group">
+            <label>Balloon (%)</label>
+            <input type="number" id="q2_balloon" placeholder="0" />
+          </div>
+          <div class="field-group">
+            <label>Payment Type</label>
+            <select id="q2_advance_arrears">
+              <option value="Arrears">Arrears</option>
+              <option value="Advance">Advance</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>GST Back</label>
+            <select id="q2_gst_back">
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Establishment Fee ($)</label>
+            <input type="number" id="q2_est_fee" placeholder="0.00" />
+          </div>
+          <div class="field-group">
+            <label>Inspection Fee ($)</label>
+            <input type="number" id="q2_insp_fee" placeholder="0.00" />
+          </div>
+          <div class="results-panel">
+            <div class="result-row">
+              <span class="result-label">Monthly Repayment</span>
+              <span class="result-value highlight" id="q2_monthly_repayment">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">GST Amount</span>
+              <span class="result-value" id="q2_gst_amount">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">Total Interest</span>
+              <span class="result-value" id="q2_total_interest">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">Total Repayment</span>
+              <span class="result-value" id="q2_total_repayment">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="quote-overlay hidden" id="overlay-2">
+          <span>Quote 2 Disabled</span>
+        </div>
+      </div>
+
+      <!-- ── Quote 3 ── -->
+      <div class="quote-card" id="card-3">
+        <div class="quote-header q3-header">
+          <div class="quote-title-row">
+            <span class="quote-label">Quote 3</span>
+            <label class="toggle-wrap">
+              <input type="checkbox" id="enable-3" checked onchange="toggleQuote(3)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="quote-body" id="body-3">
+          <div class="field-group">
+            <label>Lender</label>
+            <input type="text" id="q3_lender" placeholder="e.g. NAB" />
+          </div>
+          <div class="field-group">
+            <label>Finance Amount ($)</label>
+            <input type="number" id="q3_amount" placeholder="0.00" />
+          </div>
+          <div class="field-group">
+            <label>Interest Rate (%)</label>
+            <input type="number" id="q3_rate" placeholder="0.00" step="0.01" />
+          </div>
+          <div class="field-group">
+            <label>Term (Months)</label>
+            <input type="number" id="q3_term" placeholder="60" />
+          </div>
+          <div class="field-group">
+            <label>Balloon (%)</label>
+            <input type="number" id="q3_balloon" placeholder="0" />
+          </div>
+          <div class="field-group">
+            <label>Payment Type</label>
+            <select id="q3_advance_arrears">
+              <option value="Arrears">Arrears</option>
+              <option value="Advance">Advance</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>GST Back</label>
+            <select id="q3_gst_back">
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Establishment Fee ($)</label>
+            <input type="number" id="q3_est_fee" placeholder="0.00" />
+          </div>
+          <div class="field-group">
+            <label>Inspection Fee ($)</label>
+            <input type="number" id="q3_insp_fee" placeholder="0.00" />
+          </div>
+          <div class="results-panel">
+            <div class="result-row">
+              <span class="result-label">Monthly Repayment</span>
+              <span class="result-value highlight" id="q3_monthly_repayment">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">GST Amount</span>
+              <span class="result-value" id="q3_gst_amount">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">Total Interest</span>
+              <span class="result-value" id="q3_total_interest">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">Total Repayment</span>
+              <span class="result-value" id="q3_total_repayment">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="quote-overlay hidden" id="overlay-3">
+          <span>Quote 3 Disabled</span>
+        </div>
+      </div>
+
+      <!-- ── Quote 4 ── -->
+      <div class="quote-card" id="card-4">
+        <div class="quote-header q4-header">
+          <div class="quote-title-row">
+            <span class="quote-label">Quote 4</span>
+            <label class="toggle-wrap">
+              <input type="checkbox" id="enable-4" checked onchange="toggleQuote(4)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="quote-body" id="body-4">
+          <div class="field-group">
+            <label>Lender</label>
+            <input type="text" id="q4_lender" placeholder="e.g. CBA" />
+          </div>
+          <div class="field-group">
+            <label>Finance Amount ($)</label>
+            <input type="number" id="q4_amount" placeholder="0.00" />
+          </div>
+          <div class="field-group">
+            <label>Interest Rate (%)</label>
+            <input type="number" id="q4_rate" placeholder="0.00" step="0.01" />
+          </div>
+          <div class="field-group">
+            <label>Term (Months)</label>
+            <input type="number" id="q4_term" placeholder="60" />
+          </div>
+          <div class="field-group">
+            <label>Balloon (%)</label>
+            <input type="number" id="q4_balloon" placeholder="0" />
+          </div>
+          <div class="field-group">
+            <label>Payment Type</label>
+            <select id="q4_advance_arrears">
+              <option value="Arrears">Arrears</option>
+              <option value="Advance">Advance</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>GST Back</label>
+            <select id="q4_gst_back">
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Establishment Fee ($)</label>
+            <input type="number" id="q4_est_fee" placeholder="0.00" />
+          </div>
+          <div class="field-group">
+            <label>Inspection Fee ($)</label>
+            <input type="number" id="q4_insp_fee" placeholder="0.00" />
+          </div>
+          <div class="results-panel">
+            <div class="result-row">
+              <span class="result-label">Monthly Repayment</span>
+              <span class="result-value highlight" id="q4_monthly_repayment">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">GST Amount</span>
+              <span class="result-value" id="q4_gst_amount">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">Total Interest</span>
+              <span class="result-value" id="q4_total_interest">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">Total Repayment</span>
+              <span class="result-value" id="q4_total_repayment">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="quote-overlay hidden" id="overlay-4">
+          <span>Quote 4 Disabled</span>
+        </div>
+      </div>
+
+    </div><!-- end quotes-grid -->
+
+    <!-- ── Disclaimer ── -->
+    <div class="terms-disclaimer">
+      <strong>Important Notice:</strong> These quotes are indicative only.
+      Final rates and terms are subject to credit assessment and lender approval.
+    </div>
+
+    <!-- ── Footer ── -->
+    <div class="footer">
+      <p>Finance Calculator &nbsp;|&nbsp; Powered by Zoho CRM</p>
+      <p>Data is saved directly to your linked Zoho Sheet</p>
+    </div>
+
+  </div><!-- end container -->
+
+  <!-- Zoho SDK MUST load before app.js -->
+  <script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbededAppSDK.min.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
